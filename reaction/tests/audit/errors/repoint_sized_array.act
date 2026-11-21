@@ -1,0 +1,9 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+BYTE ARRAY nm="abc"
+PROC main()
+ CARD a
+ a=nm
+ a=@nm
+ nm="def"
+RETURN

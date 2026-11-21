@@ -1,0 +1,9 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ BYTE c
+ Open(1,"D:X.TXT",4,0)
+ c=GetD(1)
+ XIO(1,0,35,12,0,"D:X.TXT")
+ Close(1)
+RETURN

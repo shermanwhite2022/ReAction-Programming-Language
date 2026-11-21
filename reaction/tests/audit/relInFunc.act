@@ -1,0 +1,9 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+BYTE FUNC f(BYTE x)
+ IF x>1 THEN RETURN (1) FI
+RETURN (0)
+PROC main()
+ BYTE r
+ r=f(3)
+RETURN

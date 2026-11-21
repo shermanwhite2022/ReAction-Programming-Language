@@ -1,0 +1,36 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; DL - shows where the operating system put the GR7+16 screen and its display list
+INCLUDE "IO.ACT"
+INCLUDE "GRAPHICS.ACT"
+INCLUDE "MISC.ACT"
+
+PROC Main()
+ CARD scr, dl
+ BYTE i
+ BYTE ARRAY d(48)
+ Graphics(7+16)
+ scr=PeekC($58)
+ dl=PeekC($230)
+ FOR i=0 TO 47
+ DO
+  d(i)=Peek(dl+i)
+ OD
+ Graphics(0)
+ Print("SAVMSC ")
+ PrintCE(scr)
+ Print("SDLST  ")
+ PrintCE(dl)
+ Print("RAMTOP ")
+ PrintBE(Peek($6A))
+ Print("MEMTOP ")
+ PrintCE(PeekC($2E5))
+ PrintE("display list bytes:")
+ FOR i=0 TO 47
+ DO
+  PrintB(d(i))
+  Print(" ")
+ OD
+ PrintE("")
+ PrintE("press a key")
+ DO UNTIL Peek($2FC)#255 OD
+RETURN

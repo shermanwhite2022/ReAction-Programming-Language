@@ -1,0 +1,10 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ BYTE a=[3]
+ IF a=1 THEN PrintE("one")
+ ELSEIF a=2 THEN PrintE("two")
+ ELSEIF a=3 THEN PrintE("three")
+ ELSE PrintE("many")
+ FI
+RETURN

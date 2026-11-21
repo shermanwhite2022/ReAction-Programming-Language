@@ -1,0 +1,21 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; HUES - the 16 Atari hues at luminance 6, left to right: hue 0 (grey), 1, 2 ... 15.
+; Graphics mode 11 shows all 16 hues at once.
+INCLUDE "GRAPHICS.ACT"
+
+PROC Main()
+ CARD h, x
+
+ Graphics(11+16)
+ SetColor(4, 0, 6)          ; the luminance of all the hues
+ FOR h=0 TO 15
+ DO
+  color=h
+  FOR x=h*5 TO h*5+4
+  DO
+   Plot(x, 0)
+   DrawTo(x, 191)
+  OD
+ OD
+ DO OD
+RETURN

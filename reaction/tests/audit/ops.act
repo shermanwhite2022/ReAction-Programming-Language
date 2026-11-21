@@ -1,0 +1,18 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ BYTE b2=[1],b
+ CARD c,d
+ INT i
+ b2==& $0F
+ b2==LSH (5+3)
+ b2==%3
+ b2==!1
+ c=$F0 & $0F % 2 ! 1
+ d=c LSH 3 RSH b2
+ c=d MOD 7 * 3 / 2
+ i=-c
+ IF c#0 AND d<>0 OR b=1 THEN b=1 FI
+ IF (c>1 OR d>1) AND b=0 THEN b=2 FI
+ c=@b
+RETURN

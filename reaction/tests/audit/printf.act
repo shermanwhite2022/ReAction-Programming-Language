@@ -1,0 +1,9 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ BYTE b=[3]
+ CARD c=[500]
+ INT i=[-5]
+ PrintF("%S %I %U %C %H %% %E",
+  "str",i,c,'A,c)
+RETURN

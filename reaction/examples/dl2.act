@@ -1,0 +1,48 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; DL2 - paints marker rows in GR7+16 for 4 seconds, then prints the end of the display list
+INCLUDE "IO.ACT"
+INCLUDE "GRAPHICS.ACT"
+INCLUDE "MISC.ACT"
+
+PROC Rows(CARD scr, BYTE r, BYTE n, BYTE col)
+ CARD a
+ a=scr+r*40
+ SetBlock(a, n*40, col*85)
+RETURN
+
+PROC Main()
+ CARD scr, dl
+ BYTE i
+ BYTE ARRAY d(128)
+ Graphics(7+16)
+ SetColor(4, 0, 0)
+ SetColor(0, 3, 4)
+ SetColor(1, 0, 14)
+ SetColor(2, 0, 8)
+ scr=PeekC($58)
+ dl=PeekC($230)
+ FOR i=0 TO 127
+ DO
+  d(i)=Peek(dl+i)
+ OD
+ SetBlock(scr, 3840, 0)
+ Rows(scr, 0, 2, 3)
+ Rows(scr, 78, 2, 1)
+ Rows(scr, 80, 2, 2)
+ Rows(scr, 86, 2, 1)
+ Rows(scr, 94, 2, 3)
+ Wait(250)
+ Graphics(0)
+ Print("rows 0-1 grey, 78-79 red, 80-81 white,")
+ PrintE("")
+ PrintE("86-87 red, 94-95 grey were painted")
+ PrintE("display list bytes 60 to 127:")
+ FOR i=60 TO 127
+ DO
+  PrintB(d(i))
+  Print(" ")
+ OD
+ PrintE("")
+ PrintE("press a key")
+ DO UNTIL Peek($2FC)#255 OD
+RETURN

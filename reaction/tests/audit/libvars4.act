@@ -1,0 +1,5 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ Break()
+RETURN

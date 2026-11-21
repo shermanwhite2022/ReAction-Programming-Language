@@ -1,0 +1,8 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+BYTE FUNC len(BYTE ARRAY s)
+RETURN (s(0))
+PROC main()
+ BYTE n
+ n=len("hello")
+RETURN

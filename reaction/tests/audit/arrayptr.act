@@ -1,0 +1,13 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ BYTE ARRAY a(10),b(10)
+ BYTE POINTER p
+ CARD c
+
+ p=a
+ p==+1
+ c=p
+ a(c)=p^
+ PrintF("%H",p)
+RETURN

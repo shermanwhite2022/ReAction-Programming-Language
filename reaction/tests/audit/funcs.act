@@ -1,0 +1,15 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+BYTE FUNC square(BYTE x)
+RETURN (x*x)
+CARD FUNC add(CARD a,b,c)
+RETURN (a+b+c)
+PROC two(BYTE a,b)
+RETURN
+PROC main()
+ CARD z
+ z=square(3)+add(1,2,3)
+ two(1)
+ square(2)
+ z=add(1)
+RETURN

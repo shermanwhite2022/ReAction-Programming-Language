@@ -1,0 +1,49 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; ZSTRING.ACT - STRING and ZTRING helpers, part of the input/output library (see IO.ACT)
+;
+; STRING s(40) is a length byte and up to 40 characters; ZTRING z(40) is the characters and a zero
+; byte.  Assignment (=), + (join) and the comparisons work between them directly, a longer result
+; is cut to the capacity of the variable.  A STRING or ZTRING routine parameter has no known
+; capacity, so assigning to one allows up to 255 characters: make sure the caller's is that big.
+;
+;   ZLen(z)         the number of characters in a ZTRING
+;   PrintZ(z)       PrintZE(z)   print a ZTRING (no end of line / with one)
+;   PrintZD(chan,z) PrintZDE(chan,z)
+;   SLen(s)         the length of a STRING (s(0))
+
+INCLUDE "IOOUT.ACT"
+
+BYTE FUNC ZLen(BYTE ARRAY z)
+ BYTE i
+ i = 0
+ WHILE z(i) # 0 AND i < 255
+ DO
+  i ==+ 1
+ OD
+RETURN(i)
+
+BYTE FUNC SLen(BYTE ARRAY s)
+RETURN(s(0))
+
+PROC PrintZD(BYTE chan, BYTE ARRAY z)
+ BYTE i
+ i = 0
+ WHILE z(i) # 0 AND i < 255
+ DO
+  PutD(chan, z(i))
+  i ==+ 1
+ OD
+RETURN
+
+PROC PrintZDE(BYTE chan, BYTE ARRAY z)
+ PrintZD(chan, z)
+ PutDE(chan)
+RETURN
+
+PROC PrintZ(BYTE ARRAY z)
+ PrintZD(device, z)
+RETURN
+
+PROC PrintZE(BYTE ARRAY z)
+ PrintZDE(device, z)
+RETURN

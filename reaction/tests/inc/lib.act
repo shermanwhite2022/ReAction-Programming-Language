@@ -1,0 +1,4 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+DEFINE TEN="10"
+CARD FUNC twice(CARD x)
+RETURN(x*2)

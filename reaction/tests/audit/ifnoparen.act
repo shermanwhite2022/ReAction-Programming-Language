@@ -1,0 +1,7 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ BYTE a=[1]
+ IF a THEN a=0 FI
+ WHILE a DO a==-1 OD
+RETURN

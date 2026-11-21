@@ -1,0 +1,71 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; IOFILE.ACT - files: Open Close XIO Note Point BGet BPut Rename Delete
+;
+; Part of the input/output library, see IO.ACT.  
+
+INCLUDE "IOCORE.ACT"
+
+; ---- files ---------------------------------------------------------------------------------
+
+; Modes: 4 read, 6 directory, 8 write, 9 append, 12 update.  Channel 0 is the console, and
+; channel 7 is not used by this library.
+PROC Open(BYTE chan, BYTE ARRAY name, BYTE mode, BYTE aux2)
+ EOF(chan)=0
+ IOOpen(chan, name, mode, aux2)
+ IOCheck(chan)
+RETURN
+
+PROC Close(BYTE chan)
+ IOClose(chan)
+ EOF(chan)=0
+RETURN
+
+; A call to the operating system: Atari only
+PROC XIO(BYTE chan, BYTE zero, BYTE cmd, BYTE aux1, BYTE aux2, BYTE ARRAY name)
+ IOXIO(chan, zero, cmd, aux1, aux2, name)
+ IOCheck(chan)
+RETURN
+
+; ---- random access and block transfers ---------------------------------------------------
+
+; The position of the next byte of an open file, as a sector and an offset in it.  Only Point
+; with the same two values means anything: do not do arithmetic on them (on the Atari they are
+; the disk's own sector and byte, on the other machines the file position divided by 256, and
+; its remainder).  On the C64 Point works for files opened for reading only.
+PROC Note(BYTE chan, CARD POINTER sector, BYTE POINTER offset)
+ IONote(chan, sector, offset)
+ IOCheck(chan)
+RETURN
+
+PROC Point(BYTE chan, CARD sector, BYTE offset)
+ EOF(chan)=0
+ IOPoint(chan, sector, offset)
+ IOCheck(chan)
+RETURN
+
+; Read or write count bytes at once, with no line ends looked for.  BGet returns the number of
+; bytes read, which is less than count at the end of the file.
+CARD FUNC BGet(BYTE chan, BYTE ARRAY buf, CARD count)
+ CARD n
+ n=IOBGet(chan, buf, count)
+ IOCheck(chan)
+RETURN(n)
+
+PROC BPut(BYTE chan, BYTE ARRAY buf, CARD count)
+ IOBPut(chan, buf, count)
+ IOCheck(chan)
+RETURN
+
+; ---- the disk commands ---------------------------------------------------------------------
+
+; Delete a file, and give it a new name.  The new name has no device.  (Atari: XIO 33 and 32,
+; with "D:OLD,NEW".  ProDOS: DESTROY and RENAME.  Apple II (DOS 3.3): the file manager's DELETE and RENAME.  C64: the disk's "S0:" and "R0:" commands.)
+PROC Delete(BYTE ARRAY name)
+ IODelete(name)
+ IOCheck(7)
+RETURN
+
+PROC Rename(BYTE ARRAY oldname, BYTE ARRAY newname)
+ IORename(oldname, newname)
+ IOCheck(7)
+RETURN

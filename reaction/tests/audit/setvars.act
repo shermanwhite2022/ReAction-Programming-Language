@@ -1,0 +1,6 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+SET TRACE=0
+SET LIST=0
+INCLUDE "IO.ACT"
+PROC main()
+RETURN

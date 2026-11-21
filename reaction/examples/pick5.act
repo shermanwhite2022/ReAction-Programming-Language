@@ -1,0 +1,51 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; PICK5 - find the right red in the graphics mode the ball uses (mode 7, black field).
+; The hue changes by itself about every 3 seconds, 0 to 15 and round again.  The row of blocks at the top has
+; one block more than the hue number.  The three stripes are the hue at luminance 2, 4 and 6 (left to right);
+INCLUDE "GRAPHICS.ACT"
+INCLUDE "MISC.ACT"
+
+PROC Stripe(BYTE c, CARD x)
+ CARD y
+ color=c
+ FOR y=20 TO 90
+ DO
+  Plot(x, y)
+  DrawTo(x+29, y)
+ OD
+RETURN
+
+PROC Main()
+ BYTE h
+ CARD i, y
+
+ Graphics(7+16)
+ SetColor(4, 0, 0)
+ Stripe(1, 10)
+ Stripe(2, 50)
+ Stripe(3, 90)
+ DO
+  FOR h=0 TO 15
+  DO
+   SetColor(0, h, 2)
+   SetColor(1, h, 4)
+   SetColor(2, h, 6)
+   color=0
+   FOR y=0 TO 12
+   DO
+    Plot(0, y)
+    DrawTo(159, y)
+   OD
+   color=2
+   FOR i=0 TO h
+   DO
+    FOR y=2 TO 10
+    DO
+     Plot(i*8, y)
+     DrawTo(i*8+5, y)
+    OD
+   OD
+   Wait(180)
+  OD
+ OD
+RETURN

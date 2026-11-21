@@ -1,0 +1,166 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; IOOUT.ACT - output: Put PutE PutD PutDE Print.. PrintB.. PrintC.. PrintI.. PrintF PrintFD
+;
+; Part of the input/output library, see IO.ACT.  
+
+INCLUDE "IOCORE.ACT"
+
+; ---- output --------------------------------------------------------------------------------
+
+PROC PutD(BYTE chan, CHAR c)
+ IOPut(chan, c)
+ IOCheck(chan)
+RETURN
+
+PROC PutDE(BYTE chan)
+ IOEol(chan)
+ IOCheck(chan)
+RETURN
+
+PROC Put(CHAR c)
+ PutD(device, c)
+RETURN
+
+PROC PutE()
+ PutDE(device)
+RETURN
+
+PROC PrintD(BYTE chan, BYTE ARRAY s)
+ IOWrite(chan, s)
+ IOCheck(chan)
+RETURN
+
+PROC PrintDE(BYTE chan, BYTE ARRAY s)
+ PrintD(chan, s)
+ PutDE(chan)
+RETURN
+
+PROC Print(BYTE ARRAY s)
+ PrintD(device, s)
+RETURN
+
+PROC PrintE(BYTE ARRAY s)
+ PrintDE(device, s)
+RETURN
+
+PROC PrintCD(BYTE chan, CARD n)
+ BYTE ARRAY s(7)
+ StrC(n, s)
+ PrintD(chan, s)
+RETURN
+
+PROC PrintCDE(BYTE chan, CARD n)
+ PrintCD(chan, n)
+ PutDE(chan)
+RETURN
+
+PROC PrintC(CARD n)
+ PrintCD(device, n)
+RETURN
+
+PROC PrintCE(CARD n)
+ PrintCDE(device, n)
+RETURN
+
+PROC PrintBD(BYTE chan, BYTE n)
+ PrintCD(chan, n)
+RETURN
+
+PROC PrintBDE(BYTE chan, BYTE n)
+ PrintCDE(chan, n)
+RETURN
+
+PROC PrintB(BYTE n)
+ PrintCD(device, n)
+RETURN
+
+PROC PrintBE(BYTE n)
+ PrintCDE(device, n)
+RETURN
+
+PROC PrintID(BYTE chan, INT n)
+ BYTE ARRAY s(8)
+ StrI(n, s)
+ PrintD(chan, s)
+RETURN
+
+PROC PrintIDE(BYTE chan, INT n)
+ PrintID(chan, n)
+ PutDE(chan)
+RETURN
+
+PROC PrintI(INT n)
+ PrintID(device, n)
+RETURN
+
+PROC PrintIE(INT n)
+ PrintIDE(device, n)
+RETURN
+
+
+; ---- PrintF ---------------------------------------------------------------------------------
+;
+;   PrintF("control string", data, data ...)       to the default channel
+;   PrintFD(chan, "control string", data, data ...)  to a channel (not in the Action! library)
+;
+; The control string is printed as it is, except for these controls, which are replaced by the next data item
+; (an expression; up to five of them) in order:
+;
+;   %S  a string (its address)       %I  an INT          %U  an unsigned CARD
+;   %C  a character                  %H  unsigned hexadecimal, capitals, no leading zeros
+;
+; and these, which use no data:  %% prints a % and %E ends the line.  A % followed by anything else is printed
+; as it is.  Controls after the fifth print nothing; a data item left out is 0 (a %S of 0 prints nothing).
+; The data are 16 bit values: pass a BYTE, CARD, INT, character, array, pointer or string constant.  REALs are not
+; accepted.
+
+PROC PrintFD(BYTE chan, BYTE ARRAY fmt, CARD a=0, CARD b=0, CARD c=0, CARD d=0, CARD e=0)
+ CARD ARRAY arg(5)
+ BYTE ARRAY s(6)
+ BYTE POINTER sp
+ CARD i, k
+ BYTE ch
+ arg(0)=a  arg(1)=b  arg(2)=c  arg(3)=d  arg(4)=e
+ k=0
+ i=1
+ WHILE i<=fmt(0)
+ DO
+  ch=fmt(i)
+  IF ch='% AND i<fmt(0) THEN
+   i==+1
+   ch=fmt(i)
+   IF ch='% THEN
+    PutD(chan, '%)
+   ELSEIF ch='E THEN
+    PutDE(chan)
+   ELSEIF ch='S OR ch='I OR ch='U OR ch='C OR ch='H THEN
+    IF k<5 THEN
+     IF ch='S THEN
+      sp=arg(k)
+      IF sp#0 THEN PrintD(chan, sp) FI
+     ELSEIF ch='I THEN
+      PrintID(chan, arg(k))
+     ELSEIF ch='U THEN
+      PrintCD(chan, arg(k))
+     ELSEIF ch='C THEN
+      PutD(chan, arg(k))
+     ELSE
+      StrH(arg(k), s)
+      PrintD(chan, s)
+     FI
+     k==+1
+    FI
+   ELSE
+    PutD(chan, '%)
+    PutD(chan, ch)
+   FI
+  ELSE
+   PutD(chan, ch)
+  FI
+  i==+1
+ OD
+RETURN
+
+PROC PrintF(BYTE ARRAY fmt, CARD a=0, CARD b=0, CARD c=0, CARD d=0, CARD e=0)
+ PrintFD(device, fmt, a, b, c, d, e)
+RETURN

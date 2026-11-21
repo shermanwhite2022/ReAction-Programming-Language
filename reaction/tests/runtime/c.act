@@ -1,0 +1,18 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+BYTE q1, q2
+CARD q3, q4
+
+PROC Zap=$0600 (BYTE a)
+CARD FUNC Calc=$0610 (CARD a, BYTE b)
+
+PROC show(BYTE ARRAY s)
+ q1=s(1)
+ q2=s(2)
+RETURN
+
+PROC main()
+ show("Hi")
+ Zap(5)
+ q3=Calc(1000,3)
+ IF q1='H AND q2='i THEN q4=1 FI
+RETURN

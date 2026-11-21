@@ -1,0 +1,24 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; GTEST - which color is which in graphics mode 7?  The field is color 0 (the background), then stripes of
+; colors 1, 2 and 3.  Expected: black field; red, white and grey stripes.
+INCLUDE "GRAPHICS.ACT"
+
+PROC Main()
+ CARD x, y
+
+ Graphics(7+16)
+ SetColor(4, 0, 0)          ; color 0, the background and the border: black
+ SetColor(0, 3, 6)          ; color 1: red
+ SetColor(1, 0, 14)         ; color 2: white
+ SetColor(2, 0, 6)          ; color 3: grey
+ FOR x=0 TO 2
+ DO
+  color=x+1
+  FOR y=20 TO 70
+  DO
+   Plot(40+x*30, y)
+   DrawTo(60+x*30, y)
+  OD
+ OD
+ DO OD
+RETURN

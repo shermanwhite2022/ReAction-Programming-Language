@@ -1,0 +1,42 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; SOUND.ACT - sound, part of the Action! library
+;
+; INCLUDE "SOUND.ACT" for
+;
+;   PROC Sound(BYTE voice, BYTE pitch, BYTE dist, BYTE vol)   start a sound on a voice (0..3 on the Atari 800)
+;   PROC SndRst()                    silence everything
+;   PROC Tone(BYTE pitch, BYTE frames)   a pure tone for frames/60 of a second, which is waited for
+;
+; pitch is the Atari 800's POKEY divisor (0..255, the frequency falls as it rises), dist 0 to 14 and vol 0
+; to 15 as in Atari BASIC's SOUND.  The Atari 800 is the model; the C64 and the Apple II say
+; Error(146), "not supported on this hardware", where they can't do what is asked.
+
+INCLUDE "IOCORE.ACT"
+
+PROC SnSound=@SN_SOUND(BYTE voice, BYTE pitch, BYTE dist, BYTE vol)
+PROC SnReset=@SN_RESET()
+PROC SnTone=@SN_TONE(BYTE pitch, BYTE frames)
+BYTE FUNC SnErr=@GR_ERR()
+
+PROC SnCheck()
+ BYTE e
+ e=SnErr()
+ IF e#0 THEN
+  Error(e)
+ FI
+RETURN
+
+PROC Sound(BYTE voice, BYTE pitch, BYTE dist, BYTE vol)
+ SnSound(voice, pitch, dist, vol)
+ SnCheck()
+RETURN
+
+PROC SndRst()
+ SnReset()
+ SnCheck()
+RETURN
+
+PROC Tone(BYTE pitch, BYTE frames)
+ SnTone(pitch, frames)
+ SnCheck()
+RETURN

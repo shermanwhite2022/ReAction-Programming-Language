@@ -1,0 +1,51 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; IOIN.ACT - input: InputS InputSD InputMD InputB InputC InputI (and D) GetD
+;
+; Part of the input/output library, see IO.ACT.  
+
+INCLUDE "IOCORE.ACT"
+
+; ---- input ---------------------------------------------------------------------------------
+
+PROC InputMD(BYTE chan, BYTE ARRAY s, BYTE max)
+ IOLine(chan, s, max)
+ IOCheck(chan)
+RETURN
+
+PROC InputSD(BYTE chan, BYTE ARRAY s)
+ InputMD(chan, s, 255)
+RETURN
+
+PROC InputS(BYTE ARRAY s)
+ InputMD(device, s, 255)
+RETURN
+
+CHAR FUNC GetD(BYTE chan)
+ BYTE c
+ c=IOGet(chan)
+ IOCheck(chan)
+RETURN(c)
+
+BYTE ARRAY IOBUF(34)		; the line a number is read from
+
+BYTE FUNC InputBD(BYTE chan)
+ InputMD(chan, IOBUF, 32)
+RETURN(ValB(IOBUF))
+
+BYTE FUNC InputB()
+RETURN(InputBD(device))
+
+CARD FUNC InputCD(BYTE chan)
+ InputMD(chan, IOBUF, 32)
+RETURN(ValC(IOBUF))
+
+CARD FUNC InputC()
+RETURN(InputCD(device))
+
+INT FUNC InputID(BYTE chan)
+ InputMD(chan, IOBUF, 32)
+RETURN(ValI(IOBUF))
+
+INT FUNC InputI()
+RETURN(InputID(device))
+

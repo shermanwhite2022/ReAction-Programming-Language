@@ -1,0 +1,587 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; LANDER - a lunar lander for the Atari 800, graphics mode 7+16 (160 by 96 in four colors, full screen).
+;
+; Land the module on a flat pad, gently, upright and with fuel left.  The pads are the flat places in the
+; ground: a wide white one (score x1) and a narrow red one (score x3).  Gravity pulls all the time; the
+; engine pushes the way the module points.  Three modules; each landing starts a harder, new ground.
+;
+; Keyboard only:  Z or ,  turn left     X or .  turn right     (a tap is one step, holding keeps turning)
+;                 Space   the engine: hold it, or tap it for a short burn
+; The keyboard sees one key at a time, so while Space is held the turn keys may not answer: a tap of Space
+; burns for a few frames after you let go, so turn first, then burn.
+;
+; The numbers at the top: the score; the fuel; and the sideways and downward speed (white while it is safe to
+; land, red when it is too fast).  The small squares at the top right are the modules you have left.
+;
+; The module is 18 points.  When the game starts they are turned and drawn once into small pictures: for each
+; of 16 directions, with and without the flame, and for each of the 4 places a pixel can have in a byte.  A
+; frame then only copies one of these pictures onto the screen with BlitXor (an extension of this library).
+; Copying it again takes it away and puts back what was behind it, so the ground is never damaged.
+
+; Build it with the stack moved up out of the way (the program and its pictures are bigger than $8000):
+;   rc -S 0x9c00 lander.act -o lander.a
+
+INCLUDE "IO.ACT"
+INCLUDE "GRAPHICS.ACT"
+INCLUDE "MISC.ACT"
+INCLUDE "SOUND.ACT"
+
+DEFINE NP="18"                  ; points of the module
+DEFINE NT="20"                  ; the points with the flame: 2 more
+DEFINE GRAV="1"                 ; gravity, in 1/256 pixel per frame, every frame
+DEFINE THRUST="3"               ; the engine, the same unit (3 times gravity)
+DEFINE VYMAX="160"              ; the fastest safe landing, down (0.6 pixel a frame)
+DEFINE VXMAX="80"               ; and sideways
+DEFINE FUEL0="900"
+
+CARD scr                        ; the screen memory
+CARD hmin                       ; the highest point of the ground (the smallest row)
+BYTE ARRAY msk(4)=[$3F $CF $F3 $FC]     ; the bits of each of the 4 pixels in a byte, cleared
+BYTE ARRAY h(160)               ; the height of the ground in each column
+BYTE ARRAY pad(160)             ; 0, or the score factor where there is a pad
+; the module as points around its center, 8 added (the unit is a pixel, y downwards): the cabin, the legs
+; and 2 feet (the last two of the 18), then 2 points of flame under it
+BYTE ARRAY shx(20)=[7 8 9 6 10 6 7 8 9 10 7 9 6 10 5 11 4 12 8 8]
+BYTE ARRAY shy(20)=[5 5 5 6 6 7 7 7 7 7 8 8 9 9 10 10 11 11 12 13]
+BYTE ARRAY lt(640)              ; the points turned for the 16 directions: 16 * 20 pairs, 8 added
+BYTE ARRAY axt(16), ayt(16)     ; the engine's push along x and y for each direction, 10 added
+BYTE ARRAY pm(16)=[0 0 0 0 64 16 4 1 128 32 8 2 192 48 12 3]   ; a color (0 to 3) in each of the 4 pixels
+CARD ARRAY rowa(96)             ; the address of each row of the screen
+CARD ARRAY pw(4)=[1000 100 10 1]
+BYTE ARRAY sn(16)=[64 88 109 123 128 123 109 88 64 40 19 5 0 5 19 40]      ; 64 * sin, 64 added
+BYTE ARRAY spr(6144)            ; the pictures: (flame * 16 + direction) * 4 + phase, 48 bytes each (4 wide, 12 high)
+CARD sadr, sidx                 ; where the picture was put, and which one
+BYTE ARRAY cache(12)            ; the digits on the screen
+BYTE ARRAY font(50)=[7 5 5 5 7  2 6 2 2 7  7 1 7 4 7  7 1 7 1 7  5 5 7 1 1
+                     7 4 7 1 7  7 4 7 5 7  7 1 1 1 1  7 5 7 5 7  7 5 7 1 7]
+BYTE drawn                      ; the number of points that are on the screen
+
+PROC Pix(CARD x, CARD y, BYTE c)
+ CARD a
+ BYTE i, v
+ a=rowa(y)+(x RSH 2)
+ i=x&3
+ v=Peek(a)
+ Poke(a, (v&msk(i)) % pm(c*4+i))
+RETURN
+
+; the same, but anywhere: points outside of the screen are left out
+PROC PixC(CARD x, CARD y, BYTE c)
+ IF x<160 AND y<96 THEN
+  Pix(x, y, c)
+ FI
+RETURN
+
+PROC Setup()
+ CARD a
+ BYTE y
+ Graphics(7+16)
+ SetColor(4, 0, 0)              ; black
+ IF (Peek($D014)&14)=0 THEN     ; PAL: the red of the PAL palette, else the NTSC one
+  SetColor(0, 3, 2)
+ ELSE
+  SetColor(0, 3, 4)
+ FI
+ SetColor(1, 0, 14)             ; white
+ SetColor(2, 0, 8)              ; grey
+ scr=PeekC($58)
+ a=scr
+ FOR y=0 TO 95
+ DO
+  rowa(y)=a
+  a==+40
+ OD
+ SetBlock(scr, 3840, 0)
+ SetBlock(cache, 12, 255)
+RETURN
+
+; the module turned: 20 points for each of the 16 directions, around (0,0), 8 added; and the push of the engine
+PROC MakeTables()
+ INT s, c, px, py, vx, vy
+ CARD k
+ BYTE a, i, ai
+ FOR a=0 TO 15
+ DO
+  s=sn(a)
+  s==-64
+  ai=(a+4)&15
+  c=sn(ai)
+  c==-64
+  vx=THRUST*s
+  axt(a)=(vx+32+640)/64
+  vy=THRUST*c
+  ayt(a)=(vy+32+640)/64
+  FOR i=0 TO 19
+  DO
+   px=shx(i)
+   px==-8
+   py=shy(i)
+   py==-8
+   vx=px*c-py*s
+   vy=px*s+py*c
+   k=a
+   k=(k*20+i)*2
+   lt(k)=(vx+544)/64
+   lt(k+1)=(vy+544)/64
+  OD
+ OD
+RETURN
+
+; the ground, a line that goes up and down, with a wide pad (factor 1) and a narrow one (factor 3)
+PROC MakeGround(BYTE level)
+ INT y, dy
+ CARD x, p, w, k
+ BYTE m
+ SetBlock(pad, 160, 0)
+ y=70
+ dy=0
+ FOR x=0 TO 159
+ DO
+  IF x MOD 4=0 THEN
+   dy=Rand(9)
+   dy==-4
+   y==+dy
+   IF y<54 THEN y=54 FI
+   IF y>88 THEN y=88 FI
+  FI
+  h(x)=y
+ OD
+ ; the wide pad on the left, the narrow one on the right (each gets smaller with the level)
+ w=26
+ IF level<6 THEN w=w-level*2 ELSE w=14 FI
+ p=8+Rand(40)
+ m=h(p)
+ FOR k=p TO p+w-1
+ DO
+  h(k)=m
+  pad(k)=1
+ OD
+ w=14
+ IF level<6 THEN w=w-level ELSE w=8 FI
+ p=90+Rand(40)
+ m=h(p)
+ FOR k=p TO p+w-1
+ DO
+  h(k)=m
+  pad(k)=3
+ OD
+RETURN
+
+PROC DrawGround()
+ CARD x, y, lo, hi
+ BYTE c
+ FOR x=0 TO 159
+ DO
+  lo=h(x)
+  IF x<159 THEN hi=h(x+1) ELSE hi=lo FI
+  IF hi<lo THEN
+   y=lo
+   lo=hi
+   hi=y
+  FI
+  FOR y=lo TO hi
+  DO
+   Pix(x, y, 3)
+  OD
+  IF pad(x)#0 THEN
+   IF pad(x)=1 THEN c=2 ELSE c=1 FI
+   Pix(x, h(x), c)
+   Pix(x, h(x)+1, c)
+  FI
+ OD
+RETURN
+
+PROC DrawDigit(CARD x, BYTE d, BYTE col)
+ CARD p
+ BYTE r, bits
+ p=d
+ p=p*5
+ FOR r=0 TO 4
+ DO
+  bits=font(p+r)
+  Pix(x, 1+r, (bits&4)/4*col)
+  Pix(x+1, 1+r, (bits&2)/2*col)
+  Pix(x+2, 1+r, (bits&1)*col)
+ OD
+RETURN
+
+; a number in count digits (1 to 4) at x; only the digits that changed are drawn
+PROC Num(BYTE slot, CARD x, CARD n, BYTE count, BYTE col)
+ CARD d
+ BYTE i, q, key, j
+ j=4-count
+ i=0
+ WHILE i<count
+ DO
+  d=pw(j+i)
+  q=0
+  WHILE n>=d
+  DO
+   n==-d
+   q==+1
+  OD
+  key=q*4+col
+  IF cache(slot+i)#key THEN
+   cache(slot+i)=key
+   DrawDigit(x+i*4, q, col)
+  FI
+  i==+1
+ OD
+RETURN
+
+; the numbers at the top: score, fuel, sideways speed and downward speed (the speeds in 1/32 pixel a frame)
+PROC Hud(CARD score, INT fuel, INT vx, INT vy)
+ CARD u
+ INT t
+ BYTE m
+ Num(0, 2, score, 4, 2)
+ u=fuel
+ IF fuel<0 THEN u=0 FI
+ Num(4, 56, u, 4, 2)
+ t=vx
+ IF t<0 THEN t=-t FI
+ u=t
+ u=u RSH 3
+ IF u>99 THEN u=99 FI
+ IF t>VXMAX THEN m=1 ELSE m=2 FI
+ Num(8, 104, u, 2, m)
+ t=vy
+ IF t<0 THEN t=-t FI
+ u=t
+ u=u RSH 3
+ IF u>99 THEN u=99 FI
+ IF t>VYMAX THEN m=1 ELSE m=2 FI
+ Num(10, 118, u, 2, m)
+RETURN
+
+PROC DrawLives(BYTE lives)
+ BYTE i
+ CARD x
+ FOR i=0 TO 2
+ DO
+  x=140+i*6
+  IF i<lives THEN
+   Pix(x, 2, 2)
+   Pix(x+1, 2, 2)
+   Pix(x, 3, 2)
+   Pix(x+1, 3, 2)
+  ELSE
+   Pix(x, 2, 0)
+   Pix(x+1, 2, 0)
+   Pix(x, 3, 0)
+   Pix(x+1, 3, 0)
+  FI
+ OD
+RETURN
+
+; the module in direction a at (cx,cy), with its flame if fl is 1: the old points are taken away first
+; one point of the module into a picture: x, y in the 12 high picture, 4 bytes wide
+PROC SPix(CARD base, BYTE x, BYTE y, BYTE c)
+ CARD a
+ BYTE i
+ a=base+(y LSH 2)+(x RSH 2)
+ i=x&3
+ spr(a)=(spr(a)&msk(i)) % pm(c*4+i)
+RETURN
+
+; turn the points and draw all the pictures
+PROC BuildSprites()
+ CARD base, k
+ BYTE f, a, ph, i, n, x, y, c
+ Zero(spr, 6144)
+ base=0
+ FOR f=0 TO 1
+ DO
+  n=NP
+  IF f=1 THEN n=NT FI
+  FOR a=0 TO 15
+  DO
+   FOR ph=0 TO 3
+   DO
+    k=a
+    k=k*40
+    FOR i=0 TO n-1
+    DO
+     x=lt(k)-8+6+ph
+     y=lt(k+1)-8+6
+     IF i<NP THEN c=2 ELSE c=1 FI
+     SPix(base, x, y, c)
+     k==+2
+    OD
+    base==+48
+   OD
+  OD
+ OD
+RETURN
+
+PROC Hide()
+ IF drawn THEN
+  BlitXor(sadr, spr+sidx, 4, 12, 40)
+  drawn=0
+ FI
+RETURN
+
+PROC Show(CARD cx, CARD cy, BYTE a, BYTE fl)
+ CARD x, y
+ Hide()
+ x=cx-6
+ y=cy-6
+ IF y>84 THEN y=84 FI
+ sadr=rowa(y)+(x RSH 2)
+ sidx=fl
+ sidx=sidx*16+a
+ sidx=sidx*4+(x&3)
+ sidx=sidx*48
+ BlitXor(sadr, spr+sidx, 4, 12, 40)
+ drawn=1
+RETURN
+
+PROC Rumble(BYTE on)
+ IF on THEN
+  Sound(1, 90, 8, 5)
+ ELSE
+  Sound(1, 0, 0, 0)
+ FI
+RETURN
+
+PROC Explode(CARD cx, CARD cy)
+ BYTE f, j
+ Sound(1, 0, 0, 0)
+ Sound(0, 120, 8, 10)
+ FOR f=1 TO 30
+ DO
+  FOR j=1 TO 4
+  DO
+   PixC(cx+Rand(21)-10, cy+Rand(15)-7, 1+Rand(2))
+  OD
+  IF f=20 THEN Sound(0, 120, 8, 4) FI
+  Wait(1)
+ OD
+ SndRst()
+RETURN
+
+PROC AnyKey()
+ BYTE k
+ k=KeyHit()
+ WHILE k=0
+ DO
+  k=KeyHit()
+ OD
+RETURN
+
+PROC Ask()
+ BYTE k
+ PrintE("LANDER")
+ PrintE("")
+ PrintE("Land on a flat pad, slowly and upright.")
+ PrintE("White pad x1, red pad x3.")
+ PrintE("")
+ PrintE("Z or ,   turn left")
+ PrintE("X or .   turn right")
+ PrintE("Space    engine (hold it, or tap it)")
+ PrintE("")
+ PrintE("Press a key to start")
+ k=KeyHit()
+ WHILE k=0
+ DO
+  k=KeyHit()
+ OD
+RETURN
+
+; a new ground on a clear screen; hmin is the highest point of it, so that the module is only looked at near it
+PROC NewGround(BYTE level, BYTE lives)
+ CARD k
+ MakeGround(level)
+ SetBlock(scr, 3840, 0)
+ DrawGround()
+ DrawLives(lives)
+ hmin=255
+ FOR k=0 TO 159
+ DO
+  IF h(k)<hmin THEN hmin=h(k) FI
+ OD
+RETURN
+
+PROC Play()
+ INT vx, vy, ad, fuel
+ CARD xp, yp, cx, cy, k, x, y, score, pts, fx0, fx1
+ BYTE a, i, lives, level, state, thr, burst, rt, tk, kc, key, hit, ok, run, moved, held
+
+ score=0
+ lives=3
+ level=0
+ fuel=FUEL0
+ run=1
+ tk=0
+ NewGround(level, lives)
+
+ WHILE run
+ DO
+  ; ---- a new module at the top
+  xp=30+Rand(100)
+  xp=xp*256
+  yp=2560
+  vx=Rand(81)
+  vx==-40
+  vy=0
+  a=0
+  state=0
+  burst=0
+  thr=0
+  rt=0
+  drawn=0
+  SetBlock(cache, 12, 255)
+  Hud(score, fuel, vx, vy)
+
+  WHILE state=0
+  DO
+   ; ---- the controls
+   key=0
+   moved=0
+   kc=KeyHit()                  ; a key that was pressed since the last frame (also empties the key buffer)
+   IF kc=122 OR kc=90 OR kc=44 THEN a=(a+15)&15 moved=1 FI
+   IF kc=120 OR kc=88 OR kc=46 THEN a=(a+1)&15 moved=1 FI
+   IF kc=32 THEN burst=6 FI
+   IF (Peek(53775)&4)=0 THEN    ; SKSTAT: a key is held down; KBCODE says which one
+    held=Peek(53769)&63
+    IF held=$21 THEN burst=2 FI                     ; Space
+    IF moved=0 THEN
+     rt==+1
+     IF rt>=2 THEN
+      rt=0
+      IF held=$17 OR held=$20 THEN a=(a+15)&15 FI   ; Z or ,
+      IF held=$16 OR held=$22 THEN a=(a+1)&15 FI    ; X or .
+     FI
+    FI
+   FI
+   IF burst>0 THEN
+    key=1
+    burst==-1
+   FI
+
+   ; ---- the engine, gravity, and the move
+   IF key AND fuel>0 THEN
+    ad=axt(a)
+    ad==-10
+    vx==+ad
+    ad=ayt(a)
+    ad==-10
+    vy==-ad
+    fuel==-1
+    IF thr=0 THEN Rumble(1) FI
+    thr=1
+   ELSE
+    IF thr THEN Rumble(0) FI
+    thr=0
+   FI
+   vy==+GRAV
+   xp==+vx
+   yp==+vy
+   IF xp<2048 THEN
+    xp=2048
+    vx=0
+   FI
+   IF xp>38656 THEN
+    xp=38656
+    vx=0
+   FI
+   IF yp<2048 THEN
+    yp=2048
+    IF vy<0 THEN vy=0 FI
+   FI
+   cx=xp RSH 8
+   cy=yp RSH 8
+
+   ; ---- on the ground?  every point of the module is looked at, but only when it is down near the ground
+   hit=0
+   IF cy+5>=hmin THEN
+    k=a
+    k=k*40
+    i=0
+    WHILE i<NP
+    DO
+     x=cx+lt(k)-8
+     y=cy+lt(k+1)-8
+     IF x<160 THEN
+      IF y>=h(x) THEN hit=1 FI
+     FI
+     IF i=16 THEN fx0=x FI
+     IF i=17 THEN fx1=x FI
+     k==+2
+     i==+1
+    OD
+   FI
+
+   IF hit=0 THEN
+    Show(cx, cy, a, thr)
+    tk==+1
+    IF (tk&7)=0 THEN Hud(score, fuel, vx, vy) FI
+   ELSE
+    ; ---- it touched the ground: a landing, or a crash
+    ok=1
+    ad=vy
+    IF ad<0 THEN ad=-ad FI
+    IF ad>VYMAX THEN ok=0 FI
+    IF vx>VXMAX OR vx<-VXMAX THEN ok=0 FI
+    IF a#0 AND a#1 AND a#15 THEN ok=0 FI
+    IF fx0>=160 OR fx1>=160 THEN ok=0 FI
+    IF ok THEN
+     IF pad(fx0)=0 OR pad(fx0)#pad(fx1) THEN ok=0 FI
+    FI
+    IF ok THEN state=1 ELSE state=2 FI
+   FI
+   Wait(1)
+  OD
+
+  ; ---- the end of the try
+  Rumble(0)
+  IF state=1 THEN
+   Show(cx, cy, a, 0)
+   pts=pad(fx0)
+   pts=pts*(100+fuel/10)
+   score==+pts
+   Hud(score, fuel, vx, vy)
+   Sound(0, 80, 10, 8)
+   Wait(6)
+   Sound(0, 60, 10, 8)
+   Wait(6)
+   Sound(0, 40, 10, 8)
+   Wait(12)
+   SndRst()
+   Wait(70)
+   Hide()
+   level==+1
+   fuel==+300
+   IF fuel>9999 THEN fuel=9999 FI
+   NewGround(level, lives)
+  ELSE
+   Hide()
+   Explode(cx, cy)
+   lives==-1
+   Wait(30)
+   NewGround(level, lives)
+   IF lives=0 THEN run=0 FI
+  FI
+ OD
+
+ SndRst()
+ Graphics(0)
+ PrintE("GAME OVER")
+ Print("Score ")
+ PrintC(score)
+ PrintE("")
+ PrintE("Press a key.")
+ AnyKey()
+RETURN
+
+PROC Main()
+ RandSeed(Ticks())
+ MakeTables()
+ BuildSprites()
+ DO
+  Graphics(0)
+  Ask()
+  Setup()
+  Play()
+ OD
+RETURN

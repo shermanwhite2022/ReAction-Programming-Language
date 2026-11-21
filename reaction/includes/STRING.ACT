@@ -1,0 +1,82 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; STRING.ACT - string handling of the Action! library
+;
+; INCLUDE "STRING.ACT" for
+;
+;   INT FUNC SCompare(BYTE ARRAY a, BYTE ARRAY b)   negative if a < b, 0 if equal, positive if a > b
+;   PROC SCopy(BYTE ARRAY dest, BYTE ARRAY source)  dest := source
+;   PROC SCopyS(BYTE ARRAY dest, BYTE ARRAY source, BYTE start, BYTE stop)
+;                          dest := characters start..stop of source (stop is cut back to the length of source)
+;   PROC SAssign(BYTE ARRAY dest, BYTE ARRAY source, BYTE start, BYTE stop)
+;                          put source into dest at characters start..stop of dest (the copy stops at stop, or
+;                          at the end of source if that is sooner); the other characters of dest stay
+;
+; and StrB StrC StrI ValB ValC ValI (IONUM.ACT).  A string is the length, then the characters, and the first
+; character is number 1.  Comparing is by character code, then by length: "AB" is below "ABC".  SAssign makes
+; dest longer if it wrote past the end; it never makes it shorter.  Nothing checks that dest is big enough.
+
+INCLUDE "MISC.ACT"
+INCLUDE "IONUM.ACT"
+
+INT FUNC SCompare(BYTE ARRAY a, BYTE ARRAY b)
+ CARD i, n
+ n=a(0)
+ IF b(0)<n THEN n=b(0) FI
+ i=1
+ WHILE i<=n
+ DO
+  IF a(i)<b(i) THEN RETURN(-1) FI
+  IF a(i)>b(i) THEN RETURN(1) FI
+  i==+1
+ OD
+ IF a(0)<b(0) THEN RETURN(-1) FI
+ IF a(0)>b(0) THEN RETURN(1) FI
+RETURN(0)
+
+PROC SCopy(BYTE ARRAY dest, BYTE ARRAY source)
+ CARD n
+ n=source(0)
+ n==+1
+ MoveBlock(dest, source, n)
+RETURN
+
+PROC SCopyS(BYTE ARRAY dest, BYTE ARRAY source, BYTE start, BYTE stop)
+ CARD i, n
+ IF stop>source(0) THEN stop=source(0) FI
+ IF start<1 THEN start=1 FI
+ IF start>stop THEN
+  dest(0)=0
+  RETURN
+ FI
+ n=stop
+ n==-start
+ n==+1
+ dest(0)=n
+ i=0
+ WHILE i<n
+ DO
+  dest(i+1)=source(start+i)
+  i==+1
+ OD
+RETURN
+
+PROC SAssign(BYTE ARRAY dest, BYTE ARRAY source, BYTE start, BYTE stop)
+ CARD i, n, last
+ IF start<1 THEN start=1 FI
+ IF stop<start THEN RETURN FI
+ n=stop
+ n==-start
+ n==+1
+ IF n>source(0) THEN n=source(0) FI
+ IF n=0 THEN RETURN FI
+ i=0
+ WHILE i<n
+ DO
+  dest(start+i)=source(i+1)
+  i==+1
+ OD
+ last=start
+ last==+n
+ last==-1
+ IF last>dest(0) THEN dest(0)=last FI
+RETURN

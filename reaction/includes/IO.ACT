@@ -1,0 +1,51 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; IO.ACT - the input/output library of the reaction compiler, after the ACTION! library
+;
+; INCLUDE "IO.ACT" once, before the routines that use it.  It is the whole library; a program that
+; needs less can INCLUDE the parts it wants (each includes what it needs, and a file is read only
+; once):
+;
+;   IOCORE.ACT   device, EOF, Error and the machine routines   (included by all the others)
+;   IONUM.ACT    StrB StrC StrI ValB ValC ValI
+;   IOOUT.ACT    Put.. Print..
+;   IOIN.ACT     Input.. GetD
+;   IOFILE.ACT   Open Close XIO Note Point BGet BPut Rename Delete
+;   ZSTRING.ACT  ZLen SLen PrintZ PrintZE PrintZD PrintZDE   (ZTRING helpers)
+;   IOREAL.ACT   StrR ValR PrintR PrintRE PrintRD PrintRDE InputR InputRD   (REAL numbers)
+;
+; The compiler leaves out every routine and variable the program does not use, so including the
+; whole library costs nothing but compile time.
+;
+;   output   Print PrintE PrintD PrintDE   (strings)       PrintB PrintBE PrintBD PrintBDE   (BYTE)
+;            PrintC PrintCE PrintCD PrintCDE (CARD)        PrintI PrintIE PrintID PrintIDE   (INT)
+;            Put PutE PutD PutDE            (characters)
+;   input    InputS InputSD InputMD         (strings)      InputB InputBD InputC InputCD InputI InputID
+;            GetD                           (a character)
+;   files    Open Close XIO (Atari only)
+;   numbers  StrB StrC StrI StrR  ValB ValC ValI ValR
+;   REAL     PrintR PrintRE PrintRD PrintRDE InputR InputRD
+;   state    device (the default channel), EOF(chan), Error(errcode)
+;
+; A string is a BYTE ARRAY: the length first, then the characters.  The routines with a D take a
+; channel number 0 to 7; the others use the channel in device.  Channel 0 is the console.
+;
+; The machine specific parts are in includes/io.inc: Atari 800, C64, Apple II (DOS 3.3 files) and ProDOS, chosen by
+; the assembler's -t option.  Printing numbers and reading numbers are done here, so they are the
+; same everywhere.  Graphics and sound are in GRAPHICS.ACT and SOUND.ACT.
+
+
+INCLUDE "IOCORE.ACT"
+INCLUDE "IONUM.ACT"
+INCLUDE "IOOUT.ACT"
+INCLUDE "IOIN.ACT"
+INCLUDE "IOFILE.ACT"
+INCLUDE "IOREAL.ACT"
+INCLUDE "ZSTRING.ACT"
+;
+; Apple II with DOS 3.3 (target appleii): files go through the DOS file manager.  A name may start
+; with "D:", "D1:" or "D2:" (the drive); the slot is 6 (IODSLOT in io.inc).  Open modes 4 read, 8 write
+; (an old file is deleted first), 9 append (the file is read to its end), 12 read and write.  Put and
+; Print store text with bit 7 set as DOS 3.3 does, Get and InputS clear it; BGet and BPut are raw.  A
+; position is a 16 bit byte offset: Note gives the high byte as the sector and the low byte as the
+; offset, Point takes them back, so files over 64K can't be repositioned.  Each open file takes 768 bytes
+; from the heap.  Close every file you write.

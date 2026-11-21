@@ -1,0 +1,168 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; GRAPHICS.ACT - graphics, part of the Action! library
+;
+; INCLUDE "GRAPHICS.ACT" for
+;
+;   PROC Graphics(BYTE mode)         start a graphics mode (0 is the text screen); add 16 for a full screen
+;                                    without a text window and 32 to keep the screen as it is
+;   BYTE color                       the color Plot, DrawTo and Fill use (a library variable, as in Action!: color=1)
+;   PROC SetColor(BYTE reg, BYTE hue, BYTE lum)   a color register: hue 0..15, luminance 0..15
+;   PROC Plot(CARD x, CARD y)        a point
+;   PROC Position(CARD x, CARD y)    move to a point without drawing
+;   PROC DrawTo(CARD x, CARD y)      a line from the last point
+;   BYTE FUNC Locate(CARD x, CARD y) the color of a point
+;   PROC Fill(CARD x, CARD y)        fill, from the last point along a line to the right until a non-blank point
+;   CARD FUNC GrWidth()  CARD FUNC GrHeight()  BYTE FUNC GrColors()   the size and colors of the mode
+;
+; The Atari 800 is the model: its operating system does all of this, in all of its modes 0 to 15.
+; The C64 and the Apple II can't do everything the same way; a call they can't do ends in
+; Error(146), "not supported on this hardware".  Programs that move between machines should use GrWidth
+; and GrHeight rather than counting on 320 by 192.
+
+INCLUDE "IOCORE.ACT"
+
+PROC GrMode=@GR_MODE(BYTE mode)
+BYTE FUNC GrErr=@GR_ERR()
+BYTE FUNC GrNative=@GR_NATIVE()
+PROC GrColor=@GR_COLOR(BYTE c)
+PROC GrSetCol=@GR_SETCOL(BYTE reg, BYTE hue, BYTE lum)
+PROC GrPos=@GR_POS(CARD x, CARD y)
+PROC GrPix=@GR_PIX(CARD x, CARD y)
+BYTE FUNC GrLoc=@GR_LOC(CARD x, CARD y)
+PROC GrOSLine=@GR_OSLINE(CARD x, CARD y)
+PROC GrOSFill=@GR_OSFILL(CARD x, CARD y)
+CARD FUNC GrWidth=@GR_WIDTH()
+CARD FUNC GrHeight=@GR_HEIGHT()
+BYTE FUNC GrColors=@GR_COLORS()
+
+BYTE color                        ; the color the drawing uses
+BYTE grfl                        ; set while a soft Fill draws its line
+CARD grx, gry                    ; where the last point was (for the machines that draw lines here)
+
+PROC GrCheck()
+ BYTE e
+ e=GrErr()
+ IF e#0 THEN
+  Error(e)
+ FI
+RETURN
+
+PROC Graphics(BYTE mode)
+ GrMode(mode)
+ grx=0
+ gry=0
+ GrCheck()
+RETURN
+
+PROC SetColor(BYTE reg, BYTE hue, BYTE lum)
+ GrSetCol(reg, hue, lum)
+ GrCheck()
+RETURN
+
+PROC Position(CARD x, CARD y)
+ grx=x
+ gry=y
+ GrPos(x, y)
+ GrCheck()
+RETURN
+
+PROC Plot(CARD x, CARD y)
+ GrColor(color)
+ grx=x
+ gry=y
+ GrPix(x, y)
+ GrCheck()
+RETURN
+
+BYTE FUNC Locate(CARD x, CARD y)
+ BYTE c
+ grx=x
+ gry=y
+ c=GrLoc(x, y)
+ GrCheck()
+RETURN(c)
+
+; The fill of a row, as the Atari's does it: from the point to the right until a point that isn't blank
+PROC GrRun(CARD x, CARD y)
+ x==+1
+ WHILE x<GrWidth() AND GrLoc(x, y)=0
+ DO
+  GrPix(x, y)
+  x==+1
+ OD
+RETURN
+
+; A line from the last point, for the machines whose operating system doesn't draw one (Bresenham's)
+PROC GrLine(CARD x1, CARD y1)
+ INT x, y, dx, dy, sx, sy, err, e2
+ x=grx
+ y=gry
+ IF x1>=grx THEN
+  dx=x1-grx
+  sx=1
+ ELSE
+  dx=grx-x1
+  sx=-1
+ FI
+ IF y1>=gry THEN
+  dy=gry-y1
+  sy=1
+ ELSE
+  dy=y1-gry
+  sy=-1
+ FI
+ err=dx+dy
+ IF grfl THEN
+  GrRun(x, y)
+ FI
+ DO
+  IF x=x1 AND y=y1 THEN
+   EXIT
+  FI
+  e2=err+err
+  IF e2>=dy THEN
+   err==+dy
+   x==+sx
+  FI
+  IF e2<=dx THEN
+   err==+dx
+   y==+sy
+  FI
+  GrPix(x, y)
+  IF grfl THEN
+   GrRun(x, y)
+  FI
+ OD
+ GrCheck()
+RETURN
+
+PROC GrFill(CARD x, CARD y)
+ grfl=1
+ GrPix(grx, gry)
+ GrLine(x, y)
+ grfl=0
+RETURN
+
+PROC DrawTo(CARD x, CARD y)
+ GrColor(color)
+ IF GrNative() THEN
+  GrOSLine(x, y)
+  GrCheck()
+ ELSE
+  GrLine(x, y)
+ FI
+ grx=x
+ gry=y
+RETURN
+
+PROC Fill(CARD x, CARD y)
+ GrColor(color)
+ IF GrNative() THEN
+  GrOSFill(x, y)
+  GrCheck()
+ ELSE
+  GrFill(x, y)
+ FI
+ grx=x
+ gry=y
+RETURN

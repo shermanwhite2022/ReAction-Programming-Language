@@ -1,0 +1,7 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ BYTE b1,b2,b3
+ [$40 $0D $51 $F0 $600]
+ ['A b1 342 b3 4+$A7]
+RETURN

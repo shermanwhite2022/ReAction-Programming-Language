@@ -1,0 +1,6 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+INCLUDE "GRAPHICS.ACT"
+PROC main()
+ color=1
+RETURN

@@ -1,0 +1,15 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; TONE2 - raw POKEY registers, no library: about 3 seconds of tone on voice 1, then quiet
+INCLUDE "IO.ACT"
+INCLUDE "MISC.ACT"
+
+PROC Main()
+ PrintE("Raw POKEY tone for 3 seconds...")
+ Poke($D208, 0)                 ; AUDCTL: normal clocks
+ Poke($D20F, 3)                 ; SKCTL: out of the initialize state
+ Poke($D200, 50)                ; AUDF1: pitch
+ Poke($D201, $AF)               ; AUDC1: pure tone, volume 15
+ Wait(150)
+ Poke($D201, 0)
+ PrintE("done")
+RETURN

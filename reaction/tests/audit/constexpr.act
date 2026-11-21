@@ -1,0 +1,8 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+DEFINE size="10"
+BYTE ARRAY q(size)
+PROC main()
+ q(size-1)=$FF
+ q(1+2*3)=0
+RETURN

@@ -1,0 +1,22 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+BYTE num=$E0, wsync=54282
+CARD i=[0]
+INT POINTER ip=$8000
+CARD ARRAY junk=$8000
+BYTE ARRAY tests=[4 7 18]
+BYTE ARRAY str="hello"
+CHAR ch
+CHAR ARRAY cstr(20)
+INT ARRAY x(10)
+BYTE ARRAY a,b
+BYTE POINTER bptr
+PROC main()
+ bptr=@num
+ bptr^=255
+ ch='W
+ wsync=tests(1)
+ b=a
+ x(3)=-5
+ cstr(0)=3
+RETURN

@@ -1,0 +1,12 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC main()
+ BYTE i
+ INT j
+ CARD c
+ FOR i=1 TO 10 STEP 3 DO PrintB(i) OD
+ FOR j=10 TO -10 STEP -5 DO PrintI(j) OD
+ c=0
+ DO c==+1 IF c>5 THEN EXIT FI UNTIL c=3 OD
+ WHILE c<10 DO c==+1 OD
+RETURN

@@ -1,0 +1,21 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; TONE - three beeps of one second each, low, middle, high
+INCLUDE "IO.ACT"
+INCLUDE "MISC.ACT"
+INCLUDE "SOUND.ACT"
+
+PROC Main()
+ PrintE("Three one-second tones: low, middle, high")
+ Sound(0, 120, 10, 8)
+ Wait(60)
+ SndRst()
+ Wait(20)
+ Sound(0, 60, 10, 8)
+ Wait(60)
+ SndRst()
+ Wait(20)
+ Sound(0, 20, 10, 8)
+ Wait(60)
+ SndRst()
+ PrintE("done")
+RETURN

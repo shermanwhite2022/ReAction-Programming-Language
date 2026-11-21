@@ -1,0 +1,16 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+INCLUDE "STRING.ACT"
+PROC main()
+ CHAR ARRAY s(40),t(40)
+ BYTE n
+ CARD c
+ SCopy(s,"abc")
+ SCopyS(t,s,1,2)
+ SAssign(t,s,1,2)
+ n=SCompare(s,t)
+ StrB(5,s) StrC(500,s)
+ c=ValC(s)
+ InputS(s)
+ InputMD(1,s,10)
+RETURN

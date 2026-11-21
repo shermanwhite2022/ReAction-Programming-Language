@@ -1,0 +1,113 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; MISC.ACT - memory, block and random number routines of the Action! library
+;
+; INCLUDE "MISC.ACT" for
+;
+;   BYTE FUNC Peek(CARD addr)               the byte at addr
+;   CARD FUNC PeekC(CARD addr)              the two bytes at addr, addr+1 as a CARD (low byte first)
+;   PROC Poke(CARD addr, BYTE value)        store a byte
+;   PROC PokeC(CARD addr, CARD value)       store a CARD, low byte first
+;   PROC Zero(BYTE ARRAY addr, CARD size)   clear size bytes
+;   PROC SetBlock(BYTE ARRAY addr, CARD size, BYTE value)   set size bytes to value
+;   PROC MoveBlock(BYTE ARRAY dest, BYTE ARRAY source, CARD size)   copy size bytes; the blocks may overlap
+;   PROC Blit(BYTE ARRAY dest, BYTE ARRAY source, BYTE width, BYTE height, CARD stride)
+;                                    copy height rows of width bytes; the source rows follow each other and the
+;                                    destination rows are stride bytes apart (40 on an Atari screen).  An extension.
+;   PROC BlitXor(BYTE ARRAY dest, BYTE ARRAY source, BYTE width, BYTE height, CARD stride)
+;                                    the same, but each byte is exclusive-or'd into the destination, so that
+;                                    doing it again with the same arguments takes the picture away and puts back
+;                                    what was behind it.  An extension.
+;   BYTE FUNC Rand(BYTE range)              a random number 0 .. range-1, or 0 .. 255 if range is 0
+;
+; and one addition:  PROC RandSeed(CARD seed)  starts Rand from a different place (a program that does not
+; call it gets the same numbers each time it runs).
+;
+; Where Action! says BYTE POINTER the parameter here is a BYTE ARRAY: pass an array or a pointer.
+; SYSMEM(addr) does the same as Peek and Poke when it is used as a variable.
+
+BYTE FUNC Peek=@MS_PEEK(CARD addr)
+CARD FUNC PeekC=@MS_PEEKC(CARD addr)
+PROC Poke=@MS_POKE(CARD addr, BYTE value)
+PROC PokeC=@MS_POKEC(CARD addr, CARD value)
+PROC Zero=@MS_ZERO(BYTE ARRAY addr, CARD size)
+PROC SetBlock=@MS_SETBLK(BYTE ARRAY addr, CARD size, BYTE value)
+PROC MoveBlock=@MS_MOVEBLK(BYTE ARRAY dest, BYTE ARRAY source, CARD size)
+PROC Blit=@MS_BLIT(BYTE ARRAY dest, BYTE ARRAY source, BYTE width, BYTE height, CARD stride)
+PROC BlitXor=@MS_BLITX(BYTE ARRAY dest, BYTE ARRAY source, BYTE width, BYTE height, CARD stride)
+BYTE FUNC Rand=@MS_RAND(BYTE range)
+PROC RandSeed=@MS_RSEED(CARD seed)
+
+; ---- time and the keyboard: additions for programs that run in real time ---------------------------
+;
+;   PROC Wait(CARD frames)     wait that many screen frames: 1/60 of a second (1/50 on a PAL machine)
+;   CARD FUNC Ticks()          a counter that goes up by 1 each frame and wraps at 65536 (Atari 800, C64)
+;   BYTE FUNC KeyHit()         0 if no key is waiting, else the key's code, taken from the keyboard
+;
+; Wait is a delay on every machine.  On the Apple II, which has no clock, it counts processor cycles; Ticks
+; is not supported there (error 146, "not supported on this hardware").  KeyHit doesn't wait for a key, and the
+; code is the machine's own: ATASCII on the Atari 800, PETSCII on the C64 and ASCII on the Apple II.
+
+PROC Wait=@MS_WAIT(CARD frames)
+CARD FUNC MSTicks=@MS_TICKS()
+BYTE FUNC KeyHit=@MS_KEYHIT()
+
+; ---- the controllers ---------------------------------------------------------------------------
+;
+;   BYTE FUNC Stick(BYTE n)    0..15: bit 0 up, 1 down, 2 left, 3 right, 0 = pushed; 15 is centered
+;   BYTE FUNC STrig(BYTE n)    0 when the stick's button is pressed, else 1
+;   BYTE FUNC Paddle(BYTE n)   the paddle's reading
+;   BYTE FUNC PTrig(BYTE n)    0 when the paddle's button is pressed, else 1
+;
+; Atari: Stick and STrig 0..3, Paddle and PTrig 0..7, as in Action!.  C64: Stick and STrig 0 is
+; control port 2 and 1 is port 1; Paddle and PTrig 0..3 are the paddles of port 1 (0, 1) and of port 2
+; (2, 3), whose buttons are the joystick's left and right lines.  Apple II: Stick 0 and 1 are the
+; joystick on paddles 0,1 and 2,3, STrig 0 and 1 the first two buttons, Paddle 0..3, PTrig 0..2.
+; A number the machine has no control for calls Error(146), "not supported on this hardware".
+
+INCLUDE "IOCORE.ACT"
+
+BYTE FUNC MSBad=@MS_BAD()
+BYTE FUNC MSPaddle=@MS_PADDLE(BYTE n)
+BYTE FUNC MSPTrig=@MS_PTRIG(BYTE n)
+BYTE FUNC MSStick=@MS_STICK(BYTE n)
+BYTE FUNC MSSTrig=@MS_STRIG(BYTE n)
+
+BYTE FUNC Paddle(BYTE n)
+ BYTE v
+ v=MSPaddle(n)
+ IF MSBad() THEN
+  Error(146)
+ FI
+RETURN(v)
+
+BYTE FUNC PTrig(BYTE n)
+ BYTE v
+ v=MSPTrig(n)
+ IF MSBad() THEN
+  Error(146)
+ FI
+RETURN(v)
+
+BYTE FUNC Stick(BYTE n)
+ BYTE v
+ v=MSStick(n)
+ IF MSBad() THEN
+  Error(146)
+ FI
+RETURN(v)
+
+BYTE FUNC STrig(BYTE n)
+ BYTE v
+ v=MSSTrig(n)
+ IF MSBad() THEN
+  Error(146)
+ FI
+RETURN(v)
+
+CARD FUNC Ticks()
+ CARD t
+ t=MSTicks()
+ IF MSBad() THEN
+  Error(146)
+ FI
+RETURN(t)

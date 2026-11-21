@@ -1,0 +1,285 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; IOREAL.ACT - REAL numbers: StrR ValR PrintR PrintRE PrintRD PrintRDE InputR InputRD
+;
+; Part of the input/output library, see IO.ACT.
+;
+; StrR writes six significant digits (the REAL has about seven, and the last one is not
+; reliable after the scaling): 0, 3.14159, -2.5, 120000, 0.001234.  A number below 0.0001 or from
+; 10000000 up is written as 1.5E+20 or 1.5E-07.  ValR reads the same forms, and 1E5, .5, -3,
+; with up to nine digits.
+
+INCLUDE "IOCORE.ACT"
+INCLUDE "IOOUT.ACT"
+INCLUDE "IOIN.ACT"
+
+; 10 to the power k, for k a power of two up to 32
+FLOAT FUNC RP10(BYTE k)
+ IF k=32 THEN
+  RETURN(1.0E32)
+ FI
+ IF k=16 THEN
+  RETURN(1.0E16)
+ FI
+ IF k=8 THEN
+  RETURN(1.0E8)
+ FI
+ IF k=4 THEN
+  RETURN(1.0E4)
+ FI
+ IF k=2 THEN
+  RETURN(100.0)
+ FI
+RETURN(10.0)
+
+; 10 to the power n, n from 0 to 63 (above 38 the answer is out of range anyway)
+FLOAT FUNC Pow10(BYTE n)
+ FLOAT p
+ BYTE k
+ p=1.0
+ k=32
+ WHILE k>0
+ DO
+  IF n>=k THEN
+   p=p*RP10(k)
+   n==-k
+  FI
+  k==RSH 1
+ OD
+RETURN(p)
+
+PROC StrR(FLOAT r, BYTE ARRAY s)
+ FLOAT x, y
+ BYTE ARRAY dg(8)
+ BYTE i, j, k, nd
+ INT e
+ CARD hi, lo
+ IF r=0.0 THEN
+  s(0)=1
+  s(1)='0
+  RETURN
+ FI
+ j=0
+ x=r
+ IF x<0.0 THEN
+  x=-x
+  j=1
+  s(1)='-
+ FI
+ e=0
+ IF x>=10.0 THEN
+  k=32
+  WHILE k>0
+  DO
+   IF x>=RP10(k) THEN
+    x=x/RP10(k)
+    e==+k
+   FI
+   k==RSH 1
+  OD
+ ELSE
+  k=32
+  WHILE k>0
+  DO
+   y=x*RP10(k)
+   IF y<10.0 THEN
+    x=y
+    e==-k
+   FI
+   k==RSH 1
+  OD
+ FI
+ y=x*100000.0+0.5
+ hi=y/1000.0
+ IF hi>=1000 THEN
+  hi=100
+  lo=0
+  e==+1
+ ELSE
+  y=y-hi*1000.0
+  lo=y
+ FI
+ dg(1)=hi/100+'0
+ dg(2)=hi/10 MOD 10+'0
+ dg(3)=hi MOD 10+'0
+ dg(4)=lo/100+'0
+ dg(5)=lo/10 MOD 10+'0
+ dg(6)=lo MOD 10+'0
+ nd=6
+ WHILE nd>1 AND dg(nd)='0
+ DO
+  nd==-1
+ OD
+ IF e>=7 OR e<-4 THEN
+  j==+1
+  s(j)=dg(1)
+  IF nd>1 THEN
+   j==+1
+   s(j)='.
+   FOR i=2 TO nd
+   DO
+    j==+1
+    s(j)=dg(i)
+   OD
+  FI
+  j==+1
+  s(j)='E
+  j==+1
+  IF e<0 THEN
+   s(j)='-
+   e=-e
+  ELSE
+   s(j)='+
+  FI
+  j==+1
+  s(j)=e/10+'0
+  j==+1
+  s(j)=e MOD 10+'0
+ ELSEIF e>=0 THEN
+  FOR i=1 TO e+1
+  DO
+   j==+1
+   IF i<=nd THEN
+    s(j)=dg(i)
+   ELSE
+    s(j)='0
+   FI
+  OD
+  IF nd>e+1 THEN
+   j==+1
+   s(j)='.
+   FOR i=e+2 TO nd
+   DO
+    j==+1
+    s(j)=dg(i)
+   OD
+  FI
+ ELSE
+  j==+1
+  s(j)='0
+  j==+1
+  s(j)='.
+  FOR i=2 TO -e
+  DO
+   j==+1
+   s(j)='0
+  OD
+  FOR i=1 TO nd
+  DO
+   j==+1
+   s(j)=dg(i)
+  OD
+ FI
+ s(0)=j
+RETURN
+
+FLOAT FUNC ValR(BYTE ARRAY s)
+ FLOAT v
+ BYTE i, c, nd, neg, dot, seen
+ INT e, ex
+ v=0.0
+ i=1
+ e=0
+ nd=0
+ neg=0
+ dot=0
+ WHILE i<=s(0) AND s(i)=32
+ DO
+  i==+1
+ OD
+ IF i<=s(0) AND s(i)='- THEN
+  neg=1
+  i==+1
+ ELSEIF i<=s(0) AND s(i)='+ THEN
+  i==+1
+ FI
+ WHILE i<=s(0)
+ DO
+  c=s(i)
+  IF c>='0 AND c<='9 THEN
+   IF nd<9 THEN
+    v=v*10.0+(c-'0)
+    IF v#0.0 THEN
+     nd==+1
+    FI
+    IF dot THEN
+     e==-1
+    FI
+   ELSEIF dot=0 THEN
+    e==+1
+   FI
+  ELSEIF c='. AND dot=0 THEN
+   dot=1
+  ELSE
+   EXIT
+  FI
+  i==+1
+ OD
+ IF i<=s(0) AND (s(i)='E OR s(i)='e) THEN
+  i==+1
+  seen=0
+  IF i<=s(0) AND s(i)='- THEN
+   seen=1
+   i==+1
+  ELSEIF i<=s(0) AND s(i)='+ THEN
+   i==+1
+  FI
+  ex=0
+  WHILE i<=s(0) AND s(i)>='0 AND s(i)<='9 AND ex<1000
+  DO
+   ex=ex*10+(s(i)-'0)
+   i==+1
+  OD
+  IF seen THEN
+   ex=-ex
+  FI
+  e==+ex
+ FI
+ IF v=0.0 THEN
+  RETURN(v)
+ FI
+ IF e>38 THEN
+  e=38
+ FI
+ IF e<-76 THEN
+  e=-76
+ FI
+ IF e>0 THEN
+  v=v*Pow10(e)
+ ELSEIF e<0 THEN
+  e=-e
+  IF e>38 THEN
+   v=v/Pow10(38)
+   e==-38
+  FI
+  v=v/Pow10(e)
+ FI
+ IF neg THEN
+  v=-v
+ FI
+RETURN(v)
+
+PROC PrintRD(BYTE chan, FLOAT r)
+ BYTE ARRAY s(16)
+ StrR(r, s)
+ PrintD(chan, s)
+RETURN
+
+PROC PrintRDE(BYTE chan, FLOAT r)
+ PrintRD(chan, r)
+ PutDE(chan)
+RETURN
+
+PROC PrintR(FLOAT r)
+ PrintRD(device, r)
+RETURN
+
+PROC PrintRE(FLOAT r)
+ PrintRDE(device, r)
+RETURN
+
+FLOAT FUNC InputRD(BYTE chan)
+ InputMD(chan, IOBUF, 32)
+RETURN(ValR(IOBUF))
+
+FLOAT FUNC InputR()
+RETURN(InputRD(device))

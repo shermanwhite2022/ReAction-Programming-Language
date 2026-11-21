@@ -1,0 +1,10 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+DEFINE a="1",b="2"
+SET $E=$2000
+SET 14=$2000
+MODULE
+BYTE g
+PROC main()
+ g=a+b
+RETURN

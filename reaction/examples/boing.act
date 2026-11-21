@@ -1,0 +1,231 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; BOING - a bouncing, rotating checkered ball, after the Amiga demo.  Atari 800, graphics mode 7
+; (160 by 96, four colors).
+;
+; Drawing a sphere pixel by pixel every frame is far too slow for a 6502, so the program works in two steps:
+;   1. Once, at the start, the ball is worked out in floating point.  For each pixel of the ball the table
+;      ball holds where that pixel lies on the sphere (its longitude and latitude, tilted 23 degrees).
+;   2. Eight frames of the ball, each turned a little further, are made from that table and kept as bytes
+;      in the screen's own format.  The animation then just copies a frame to the screen with MoveBlock.
+
+INCLUDE "IO.ACT"
+INCLUDE "GRAPHICS.ACT"
+INCLUDE "MISC.ACT"
+
+DEFINE SIZE="40"            ; the ball is 40 by 40 pixels
+DEFINE FW="12"              ; a frame is 12 bytes (48 pixels) wide: the ball and a blank byte at each side
+DEFINE FH="52"              ; and 52 rows high: the ball and 6 blank rows above and below, for it to move into
+DEFINE NFRAMES="8"
+DEFINE FLOORROW="90"
+
+; The colors are numbers for the Atari's color registers (hue 0 to 15, luminance 0 to 14), and the hues
+; come out differently on a PAL machine than on an NTSC one, so the program asks which it is and uses
+; the right red.  Change these to taste.
+DEFINE REDHUE_NTSC="3"
+DEFINE REDLUM_NTSC="4"
+DEFINE REDHUE_PAL="3"
+DEFINE REDLUM_PAL="2"
+
+BYTE ARRAY ball(1600)       ; the longitude (0 to 31) times 8, plus the latitude band (0 to 7), of each pixel
+BYTE ARRAY frames(4992)     ; NFRAMES frames of FH rows of FW bytes
+BYTE ARRAY floor(80)        ; two rows of the floor, color 3 all the way
+
+BYTE ARRAY zt(1601)         ; zt(v) is the square root of v, in whole numbers
+BYTE ARRAY angq(129)        ; angq(r) is how many squares (5.625 degrees) wide the angle is whose tangent is r/128
+BYTE ARRAY latb(81)         ; latb(y) is the latitude band (0 to 7) of a point y-40 up (in half pixels)
+BYTE ARRAY lat(7)=[3 12 25 40 55 68 77]     ; where the latitude bands change, in y+40
+
+; Make the three little tables.  Floating point is used only for the eight tangents.
+PROC MakeTools()
+ BYTE k, band
+ CARD v, e
+ FLOAT t
+ BYTE ARRAY tn(9)           ; 128 times the tangent of k squares
+
+ FOR k=0 TO 8
+ DO
+  t=k
+  t=TAN(t*0.09817)*128.0    ; 5.625 degrees in radians
+  IF t>128.0 THEN t=128.0 FI
+  tn(k)=t
+ OD
+ k=0
+ FOR v=0 TO 128
+ DO
+  IF k<8 THEN
+   IF v>=tn(k+1) THEN k==+1 FI
+  FI
+  angq(v)=k
+ OD
+ band=0
+ FOR v=0 TO 80
+ DO
+  IF band<7 THEN
+   IF v>=lat(band) THEN band==+1 FI
+  FI
+  latb(v)=band
+ OD
+ e=1
+ k=0
+ FOR v=0 TO 1600
+ DO
+  IF v>=e THEN
+   k==+1
+   e=k+1
+   e==*e
+  FI
+  zt(v)=k
+ OD
+RETURN
+
+; work out, for every pixel of the ball, which square of the sphere it shows.  A pixel outside the ball is 255.
+; The work is in whole numbers, with the ball 80 units across (half a pixel each) and the axis tilted
+; 23 degrees: cos is 236/256 and sin is 100/256.
+PROC MakeTable()
+ BYTE px, py, ang, lq
+ INT dx, dy, x2, y2, z, a, r, d2
+ CARD i
+
+ MakeTools()
+ i=0
+ FOR py=0 TO SIZE-1
+ DO
+  FOR px=0 TO SIZE-1
+  DO
+   dx=2*px-(SIZE-1)
+   dy=2*py-(SIZE-1)
+   ball(i)=255
+   d2=dx*dx+dy*dy
+   IF d2<SIZE*SIZE THEN
+    x2=dx*236-dy*100        ; 256 times the turned x and y
+    y2=dx*100+dy*236
+    z=zt(SIZE*SIZE-d2)*256
+    IF z<256 THEN z=256 FI
+    ; longitude: the angle whose tangent is x2/z
+    a=x2
+    IF a<0 THEN a=-a FI
+    IF a<=z THEN
+     ang=angq(a/(z/128))
+    ELSE
+     ang=16-angq(z/(a/128))
+    FI
+    IF x2<0 THEN
+     IF ang>15 THEN lq=0 ELSE lq=15-ang FI
+    ELSE
+     lq=16+ang
+     IF lq>30 THEN lq=30 FI
+    FI
+    r=y2+10240
+    ball(i)=lq*8+latb(r RSH 8)
+   FI
+   i==+1
+  OD
+ OD
+RETURN
+
+; the eight turned frames.  For each one a little table, shade, says what color a table entry has, so that
+; a frame is made with a lookup for each pixel.
+PROC MakeFrames()
+ BYTE ARRAY shade(256)
+ BYTE f, py, cb, b
+ CARD sq, i, at, base
+
+ base=0
+ FOR f=0 TO NFRAMES-1
+ DO
+  FOR i=0 TO 254
+  DO
+   sq=((i RSH 3)+f) RSH 2
+   sq==+(i&7)
+   shade(i)=1+(sq&1)
+  OD
+  shade(255)=0
+  SetBlock(frames+base, FW*FH, 0)
+  i=0
+  at=base+6*FW+1
+  FOR py=0 TO SIZE-1
+  DO
+   FOR cb=0 TO SIZE/4-1
+   DO
+    b=shade(ball(i))*64+shade(ball(i+1))*16+shade(ball(i+2))*4+shade(ball(i+3))
+    frames(at)=b
+    at==+1
+    i==+4
+   OD
+   at==+2
+  OD
+  base==+FW*FH
+ OD
+RETURN
+
+PROC Main()
+ CARD scr, y, yy, fc
+ INT vy, vx
+ BYTE bx, f, n, r
+
+ Graphics(7+16)
+ SetColor(4, 0, 0)          ; the field, and the border: black
+ IF (Peek($D014)&14)=0 THEN     ; GTIA's PAL register: 1 on a PAL machine, 15 on an NTSC one
+  SetColor(0, REDHUE_PAL, REDLUM_PAL)
+ ELSE
+  SetColor(0, REDHUE_NTSC, REDLUM_NTSC)
+ FI
+ SetColor(1, 0, 14)         ; white
+ SetColor(2, 0, 6)          ; grey
+ scr=PeekC($58)             ; the screen memory (SAVMSC)
+
+ ; working out the ball takes a while: a grey bar across the middle of the screen shows how far it is
+ color=3
+ Plot(0, 48)
+ MakeTable()
+ DrawTo(79, 48)
+ MakeFrames()
+ DrawTo(159, 48)
+ SetBlock(scr+48*40, 40, 0)
+ SetBlock(floor, 80, 255)
+
+ y=0
+ vy=0
+ bx=0
+ vx=1
+ f=0
+ fc=0
+ n=0
+ DO
+  ; draw the frame at the ball's position
+  yy=y RSH 4
+  Blit(scr+yy*40+bx, frames+fc, FW, FH, 40)
+  MoveBlock(scr+FLOORROW*40, floor, 80)     ; the ball's blank margin may have covered the floor
+
+  Wait(1)
+
+  ; physics: gravity, bounce at the floor
+  vy==+6
+  y==+vy
+  IF y>704 THEN
+   y=704
+   vy=-92
+  FI
+  ; across: one byte (4 pixels) every second frame
+  n==+1
+  IF n=2 THEN
+   n=0
+   IF vx=1 THEN
+    IF bx>=28 THEN vx=-1 FI
+   ELSE
+    IF bx=0 THEN vx=1 FI
+   FI
+   bx==+vx
+  FI
+  ; the ball turns as it rolls
+  IF vx=1 THEN
+   f==+1
+   IF f=NFRAMES THEN f=0 FI
+  ELSE
+   IF f=0 THEN f=NFRAMES FI
+   f==-1
+  FI
+  fc=f
+  fc==*FW*FH
+ OD
+RETURN

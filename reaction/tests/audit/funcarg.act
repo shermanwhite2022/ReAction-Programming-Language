@@ -1,0 +1,9 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+BYTE FUNC f(BYTE x)
+RETURN (x)
+PROC two(BYTE a,b)
+RETURN
+PROC main()
+ two(1,f(2))
+RETURN

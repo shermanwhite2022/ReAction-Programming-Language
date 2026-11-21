@@ -1,0 +1,10 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+TYPE r=[BYTE a CARD b]
+PROC setr(r POINTER p)
+ p.a=1
+RETURN
+PROC main()
+ r x
+ setr(@x)
+RETURN

@@ -1,0 +1,8 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+CARD old
+PROC myerr(BYTE e)
+ PrintBE(e)
+RETURN
+PROC main()
+RETURN

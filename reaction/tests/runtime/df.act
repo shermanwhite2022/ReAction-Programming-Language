@@ -1,0 +1,27 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IOOUT.ACT"
+PROC show(CARD a, CARD b=10, BYTE c=7, INT d=-5)
+ PrintC(a) Put(32) PrintC(b) Put(32) PrintB(c) Put(32) PrintI(d) PutE()
+RETURN
+CLASS acc
+ CARD total
+ PROC init(CARD start=100)
+  total=start
+ RETURN
+ PROC add(CARD n, CARD times=1)
+  total==+n*times
+ RETURN
+SSALC
+acc ac
+PROC main()
+ show(1)
+ show(1, 2)
+ show(1, 2, 3)
+ show(1, 2, 3, 4)
+ ac=NEW acc()
+ ac.add(5)
+ ac.add(5, 3)
+ PrintCE(ac.total)
+ ac=NEW acc(7)
+ PrintCE(ac.total)
+RETURN

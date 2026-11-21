@@ -1,0 +1,7 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC two(BYTE a,b)
+RETURN
+PROC main()
+ two(1)
+RETURN

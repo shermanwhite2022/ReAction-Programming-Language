@@ -1,0 +1,67 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; IOCORE.ACT - the channel state, the machine routines, error handling
+;
+; Part of the input/output library, see IO.ACT.  Included by the others.
+
+INCLUDE "IONUM.ACT"
+
+BYTE device=[0]			; the default channel
+BYTE ARRAY EOF(8)		; EOF(chan) is 1 once a read has reached the end of the file
+
+; ---- the primitives in io.inc ----------------------------------------------------------
+
+PROC IOPut=@IO_PUT(BYTE chan, BYTE ch)
+PROC IOEol=@IO_PUTEOL(BYTE chan)
+PROC IOWrite=@IO_WRITE(BYTE chan, BYTE ARRAY s)
+BYTE FUNC IOGet=@IO_GET(BYTE chan)
+PROC IOLine=@IO_LINE(BYTE chan, BYTE ARRAY s, BYTE max)
+PROC IOOpen=@IO_OPEN(BYTE chan, BYTE ARRAY name, BYTE mode, BYTE aux2)
+PROC IOClose=@IO_CLOSE(BYTE chan)
+BYTE FUNC IOStat=@IO_STAT()
+PROC IOXIO=@IO_XIO(BYTE chan, BYTE zero, BYTE cmd, BYTE aux1, BYTE aux2, BYTE ARRAY name)
+PROC IONote=@IO_NOTE(BYTE chan, CARD sp, CARD op)
+PROC IOPoint=@IO_POINT(BYTE chan, CARD sector, BYTE offset)
+CARD FUNC IOBGet=@IO_BGET(BYTE chan, CARD buf, CARD count)
+PROC IOBPut=@IO_BPUT(BYTE chan, CARD buf, CARD count)
+PROC IODelete=@IO_DELETE(BYTE ARRAY name)
+PROC IORename=@IO_RENAME(BYTE ARRAY oldname, BYTE ARRAY newname)
+PROC IOExit=@IO_EXIT()
+; Raise(code) gives the code to the nearest TRY ... CATCH, and returns if there is none.  The THROW
+; statement does the same, then calls Error.
+PROC Raise=@TRY_THROW(BYTE code)
+
+; ---- errors --------------------------------------------------------------------------------
+
+; Error 146 is the code for a call the machine's hardware can't do, shown with its text "not supported on this hardware".
+; The system error routine: inside a TRY the code goes to its CATCH, else the code is shown and the program ends.  An end of file is not an
+; error here: it sets EOF(chan).  (ACTION! lets a program replace this routine; here it is fixed.)
+PROC Error(BYTE errcode)
+ BYTE ARRAY t(7)
+ Raise(errcode)
+ IOWrite(0, "ERROR ")
+ StrC(errcode, t)
+ IOWrite(0, t)
+ IF errcode=146 THEN
+  IOWrite(0, " not supported on this hardware")
+ FI
+ IOEol(0)
+ IOExit()
+RETURN
+
+; Stops the program, as ACTION!'s stops it for the monitor (there is no monitor here, so the program ends).
+PROC Break()
+ IOExit()
+RETURN
+
+PROC IOCheck(BYTE chan)
+ BYTE st
+ st=IOStat()
+ IF st>=128 THEN
+  IF st=136 THEN
+   EOF(chan)=1
+  ELSE
+   Error(st)
+  FI
+ FI
+RETURN
+

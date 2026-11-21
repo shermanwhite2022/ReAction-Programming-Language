@@ -1,0 +1,9 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+CARD FUNC addr(BYTE POINTER p)
+RETURN (p)
+PROC main()
+ BYTE b
+ CARD c
+ c=addr(@b)
+RETURN

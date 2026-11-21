@@ -1,0 +1,110 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+; IONUM.ACT - numbers to strings and back: StrB StrC StrI StrH ValB ValC ValI
+;
+; Part of the input/output library, see IO.ACT.  No input or output, so it can be used alone.
+
+; the decimal digits of n, as a string
+PROC StrC(CARD n, BYTE ARRAY s)
+ BYTE ARRAY t(6)
+ BYTE i, j
+ i=0
+ DO
+  t(i)='0+(n MOD 10)
+  n=n/10
+  i==+1
+ UNTIL n=0
+ OD
+ s(0)=i
+ j=1
+ WHILE i>0
+ DO
+  i==-1
+  s(j)=t(i)
+  j==+1
+ OD
+RETURN
+
+; the hexadecimal digits of n (capitals, no leading zeros), as a string: not in the Action! library, PrintF's %H uses it
+PROC StrH(CARD n, BYTE ARRAY s)
+ BYTE ARRAY t(5)
+ BYTE i, j, d
+ i=0
+ DO
+  d=n MOD 16
+  IF d<10 THEN t(i)='0+d ELSE t(i)='A+d-10 FI
+  n=n/16
+  i==+1
+ UNTIL n=0
+ OD
+ s(0)=i
+ j=1
+ WHILE i>0
+ DO
+  i==-1
+  s(j)=t(i)
+  j==+1
+ OD
+RETURN
+
+PROC StrB(BYTE n, BYTE ARRAY s)
+ StrC(n, s)
+RETURN
+
+PROC StrI(INT n, BYTE ARRAY s)
+ BYTE ARRAY t(7)
+ BYTE i
+ IF n<0 THEN
+  StrC(-n, t)
+  s(0)=t(0)+1
+  s(1)='-
+  i=1
+  WHILE i<=t(0)
+  DO
+   s(i+1)=t(i)
+   i==+1
+  OD
+ ELSE
+  StrC(n, s)
+ FI
+RETURN
+
+; the number at the start of s from character start, after any spaces; stops at the first
+; character that is not a digit
+CARD FUNC ValU(BYTE ARRAY s, BYTE start)
+ CARD v
+ BYTE i, c
+ v=0
+ i=start
+ WHILE i<=s(0) AND s(i)=32
+ DO
+  i==+1
+ OD
+ WHILE i<=s(0)
+ DO
+  c=s(i)
+  IF c<'0 OR c>'9 THEN
+   EXIT
+  FI
+  v=v*10+(c-'0)
+  i==+1
+ OD
+RETURN(v)
+
+CARD FUNC ValC(BYTE ARRAY s)
+RETURN(ValU(s, 1))
+
+BYTE FUNC ValB(BYTE ARRAY s)
+RETURN(ValU(s, 1))
+
+INT FUNC ValI(BYTE ARRAY s)
+ BYTE i
+ i=1
+ WHILE i<=s(0) AND s(i)=32
+ DO
+  i==+1
+ OD
+ IF i<=s(0) AND s(i)='- THEN
+  RETURN(-ValU(s, i+1))
+ FI
+RETURN(ValU(s, i))
+

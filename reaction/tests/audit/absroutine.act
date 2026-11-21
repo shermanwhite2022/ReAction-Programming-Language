@@ -1,0 +1,6 @@
+; Author: Sherman White Jr., email: subscribeandnotifyme@gmail.com c. 2026
+INCLUDE "IO.ACT"
+PROC CIO=$E456(BYTE areg,xreg)
+PROC main()
+ CIO(0,$20)
+RETURN
