@@ -1,0 +1,185 @@
+; SINESURF - a sine wave surface in hi-res graphics (mode 8+16, 320 by 192, two colors, full screen).
+;
+; The surface is a rippling wave that spreads from the middle and fades with the distance, drawn as 48 lines
+; from the front to the back, 64 points on each.  Lines further back are hidden by the ones in front of them
+; (hidden line removal): for each of the 320 columns of the screen the program remembers the highest and the
+; lowest point drawn so far, and a new point is only put on the screen if it is above the one or below the
+; other.  The picture builds up from the front, and takes about a minute and a half on a 1.8 MHz machine.
+;
+; The program uses whole numbers only, apart from the 65 values of the cosine table at the start.  The rows
+; of the screen are found in a table: in this display the screen is split at a 4K boundary, so the rows are
+; not one after the other all the way down.
+;
+; Press any key to draw it again with the ripples spaced differently (four spacings in turn).
+;
+; Build it with:  rc sinesurf.act -o sinesurf.a      (the default stack is far enough away for this one)
+
+INCLUDE "IO.ACT"
+INCLUDE "GRAPHICS.ACT"
+INCLUDE "MISC.ACT"
+
+DEFINE NX="64"                  ; points on a line
+DEFINE NZ="48"                  ; lines
+DEFINE CX="32"                  ; the middle of the wave, in points from the left
+DEFINE CZ="24"                  ; and in lines from the front
+
+CARD scr                        ; the screen memory
+CARD ARRAY rowa(192)            ; the address of each row of the screen
+BYTE ARRAY bitm(8)=[128 64 32 16 8 4 2 1]
+BYTE ARRAY cq(65)               ; 127 * cosine, for the first quarter of the circle in 256 steps
+BYTE ARRAY rt(2401)             ; rt(v): 4 * the square root of v, in whole numbers
+BYTE ARRAY amp(200)             ; how high the wave is at distance r (in quarter points)
+BYTE ARRAY ht(3072)             ; the row of the screen of each point: line * 64 + point
+BYTE ARRAY top(320)             ; the highest row drawn so far in each column of the screen
+BYTE ARRAY bot(320)             ; and the lowest
+BYTE wl                         ; how far apart the ripples are (the index step per quarter point)
+
+; the cosine of a position in a circle of 256 steps, times 127
+INT FUNC Cosv(BYTE i)
+ INT v
+ IF i<=64 THEN
+  v=cq(i)
+ ELSEIF i<=128 THEN
+  v=-cq(128-i)
+ ELSEIF i<=192 THEN
+  v=-cq(i-128)
+ ELSE
+  v=cq(256-i)
+ FI
+RETURN(v)
+
+; the three tables, made once.  Floating point is used only for the cosines.
+PROC MakeTables()
+ CARD v, r
+ BYTE k
+ FLOAT t
+
+ FOR k=0 TO 64
+ DO
+  t=k
+  t=COS(t*0.02454369)*127.0     ; 2 pi / 256 radians a step
+  cq(k)=t
+ OD
+ r=0
+ FOR v=0 TO 2400
+ DO
+  WHILE (r+1)*(r+1)<=16*v DO r==+1 OD
+  rt(v)=r
+ OD
+ FOR r=0 TO 199
+ DO
+  amp(r)=(36*64)/(64+r)
+ OD
+RETURN
+
+; the height of every point of the surface, as a row of the screen
+PROC MakeSurface()
+ CARD gx, gz, dx, dz, v
+ INT h, y
+ BYTE r, idx
+ FOR gz=0 TO NZ-1
+ DO
+  IF gz>=CZ THEN dz=gz-CZ ELSE dz=CZ-gz FI
+  dz==+(dz RSH 1)               ; the lines are closer together than the points: 1.5 times the distance
+  FOR gx=0 TO NX-1
+  DO
+   IF gx>=CX THEN dx=gx-CX ELSE dx=CX-gx FI
+   r=rt(dx*dx+dz*dz)
+   idx=r*wl
+   h=Cosv(idx)
+   h=(h*amp(r))/127
+   y=175-gz*3-h                 ; the line's own row of the screen, 3 rows up for each line
+   IF y<0 THEN y=0 FI
+   IF y>191 THEN y=191 FI
+   ht(gz*NX+gx)=y
+  OD
+ OD
+RETURN
+
+; the rows of the screen: 40 bytes each, but a row that would run over a 4K boundary starts at the next one
+PROC MakeRows()
+ CARD a, y
+ a=scr
+ FOR y=0 TO 191
+ DO
+  IF (a&$0FFF)+40>$1000 THEN a=(a&$F000)+$1000 FI
+  rowa(y)=a
+  a==+40
+ OD
+RETURN
+
+PROC PutPx(CARD x, CARD y)
+ CARD a
+ BYTE m
+ a=rowa(y)+(x RSH 3)
+ m=bitm(x&7)
+ Poke(a, Peek(a) % m)
+RETURN
+
+; one point of a line, hidden if it is behind what has been drawn
+PROC Pt(CARD x, CARD y)
+ IF y<top(x) THEN
+  PutPx(x, y)
+  top(x)=y
+ FI
+ IF y>bot(x) THEN
+  IF y<>top(x) THEN PutPx(x, y) FI
+  bot(x)=y
+ FI
+RETURN
+
+; the line between two neighboring points, 4 columns apart: one point for each column, or for each row
+; if the line is steep
+PROC Seg(CARD x0, INT y0, INT y1)
+ INT dy, n, k
+ CARD x
+ dy=y1-y0
+ n=dy
+ IF n<0 THEN n=-n FI
+ IF n<4 THEN n=4 FI
+ FOR k=0 TO n
+ DO
+  x=x0+(4*k)/n
+  Pt(x, y0+(dy*k)/n)
+ OD
+RETURN
+
+PROC DrawSurface()
+ CARD gx, gz, i
+ FOR i=0 TO 319
+ DO
+  top(i)=255
+  bot(i)=0
+ OD
+ FOR gz=0 TO NZ-1
+ DO
+  FOR gx=0 TO NX-2
+  DO
+   i=gz*NX+gx
+   Seg(8+gx*4+gz, ht(i), ht(i+1))
+  OD
+ OD
+RETURN
+
+PROC Main()
+ BYTE n
+ scr=0
+ wl=6
+ n=0
+ MakeTables()
+ DO
+  Graphics(8+16)
+  scr=PeekC($58)
+  IF (Peek($D014)&14)=0 THEN SetColor(2, 8, 2) ELSE SetColor(2, 9, 2) FI
+  SetColor(1, 0, 14)            ; the lines: white; the background: dark blue
+  SetColor(4, 0, 0)
+  MakeRows()
+  MakeSurface()
+  DrawSurface()
+  WHILE KeyHit()=0 DO OD
+  n==+1
+  n=n&3
+  wl=6-n
+  IF n=3 THEN wl=8 FI
+ OD
+RETURN
